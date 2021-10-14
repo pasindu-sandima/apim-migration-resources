@@ -188,6 +188,11 @@
             <version>${carbon.apimgt.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.wso2.carbon.identity.framework</groupId>
+            <artifactId>org.wso2.carbon.identity.application.common</artifactId>
+            <version>${carbon.identity.framework.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>6.8.5</version>
@@ -206,5 +211,6 @@
         <carbon.governance.version>4.8.14</carbon.governance.version>
         <carbon.kernel.version>4.4.40</carbon.kernel.version>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+        <carbon.identity.framework.version>5.17.5</carbon.identity.framework.version>
     </properties>
 </project>

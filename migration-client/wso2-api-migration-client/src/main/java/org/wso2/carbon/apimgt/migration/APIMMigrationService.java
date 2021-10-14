@@ -19,6 +19,7 @@ package org.wso2.carbon.apimgt.migration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
+import org.wso2.carbon.apimgt.migration.client.ApplicationOwnerChangeManagementClient;
 import org.wso2.carbon.apimgt.migration.client.MigrateFrom200;
 import org.wso2.carbon.apimgt.migration.client.MigrateFrom210;
 import org.wso2.carbon.apimgt.migration.client.MigrateFrom310;
@@ -89,6 +90,7 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean ignoreCrossTenantSubscriptions =
                 Boolean.parseBoolean(System.getProperty(Constants.ARG_IGNORE_CROSS_TENANT_SUBSCRIPTIONS));
         boolean isSPAppAssignment = Boolean.parseBoolean(System.getProperty(Constants.ARG_ASSIGN_OAUTH_APPS_TO_OWNERS));
+        boolean isAppNameRewrite = Boolean.parseBoolean(System.getProperty(Constants.APP_NAME_REWRITE));
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
@@ -97,6 +99,14 @@ public class APIMMigrationService implements ServerStartupObserver {
                 OauthAppAssignmentClient oauthAppAssignMentClient = new OauthAppAssignmentClient(tenants,
                         blackListTenants, tenantRange, tenantManager);
                 oauthAppAssignMentClient.assignOauthAppToOwners();
+            }
+
+            if (isAppNameRewrite) {
+                log.info("----------------App Name rewrite for owner changed applications started------------------");
+                ApplicationOwnerChangeManagementClient ownerChangeManagementClient =
+                        new ApplicationOwnerChangeManagementClient(tenants, blackListTenants, tenantRange,
+                        tenantManager);
+                ownerChangeManagementClient.updateApplicationOwner();
             }
             //Check SP-Migration enabled
             if (isSPMigration) {
