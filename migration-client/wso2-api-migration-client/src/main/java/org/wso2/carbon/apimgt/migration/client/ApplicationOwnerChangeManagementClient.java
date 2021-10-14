@@ -19,6 +19,7 @@ package org.wso2.carbon.apimgt.migration.client;
 import com.google.gson.Gson;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.internal.ServiceHolder;
 import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
@@ -74,7 +75,7 @@ public class ApplicationOwnerChangeManagementClient extends MigrationClientBase 
                                 .getTenantAwareUsername(appDetailsDTO.getAppSubscriber()));
                         if (existingUser) {
                             String currentSPAppName = appDetailsDTO.getCurrentSPAppName();
-                            String qualifiedSPName = appDetailsDTO.getUserName() + "_" + appDetailsDTO.getAppName() +
+                            String qualifiedSPName = APIUtil.replaceEmailDomain(appDetailsDTO.getUserName()) + "_" + appDetailsDTO.getAppName() +
                                     "_" + appDetailsDTO.getKeyType();
                             if (!qualifiedSPName.equals(currentSPAppName)) {
                                 log.info("Current SP name " + currentSPAppName
