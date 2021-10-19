@@ -349,5 +349,6 @@ public class Constants {
     public static final String NAME = "Name";
     public static final String ROLES = "Roles";
     public static final String ARG_ASSIGN_OAUTH_APPS_TO_OWNERS = "assignOauthAppOwners";
-    public static final String APP_NAME_REWRITE = "appNameRewrite";
+    public static final String EVALUATE_SP_APP_NAME = "evaluateSPAppName";
+    public static final String OVERRIDE_APP_NAME = "overrideSPAppName";
 }

@@ -90,7 +90,8 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean ignoreCrossTenantSubscriptions =
                 Boolean.parseBoolean(System.getProperty(Constants.ARG_IGNORE_CROSS_TENANT_SUBSCRIPTIONS));
         boolean isSPAppAssignment = Boolean.parseBoolean(System.getProperty(Constants.ARG_ASSIGN_OAUTH_APPS_TO_OWNERS));
-        boolean isAppNameRewrite = Boolean.parseBoolean(System.getProperty(Constants.APP_NAME_REWRITE));
+        boolean overrideSPAppName = Boolean.parseBoolean(System.getProperty(Constants.OVERRIDE_APP_NAME));
+        boolean isEvaluateSPAppName = Boolean.parseBoolean(System.getProperty(Constants.EVALUATE_SP_APP_NAME)) || overrideSPAppName;
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
@@ -101,12 +102,12 @@ public class APIMMigrationService implements ServerStartupObserver {
                 oauthAppAssignMentClient.assignOauthAppToOwners();
             }
 
-            if (isAppNameRewrite) {
-                log.info("----------------App Name rewrite for owner changed applications started------------------");
+            if (isEvaluateSPAppName) {
+                log.info("----------------SP App Name rewrite for owner changed applications started------------------");
                 ApplicationOwnerChangeManagementClient ownerChangeManagementClient =
                         new ApplicationOwnerChangeManagementClient(tenants, blackListTenants, tenantRange,
                         tenantManager);
-                ownerChangeManagementClient.updateApplicationOwner();
+                ownerChangeManagementClient.updateApplicationOwner(overrideSPAppName);
             }
             //Check SP-Migration enabled
             if (isSPMigration) {

@@ -42,7 +42,7 @@ import java.util.List;
  * associated with that app would be Application/chris_PizzaApp_Production. Once we transfer this to kim user, before 3.x,
  * owner transfer happens, but we don not update the created application names or role names. From 3.2.0 onwards, we update
  * these such that SP app would be changed to kim_PizzaApp_Production and role to Application/kim_PizzaApp_Production.
- *
+ * <p>
  * With this class, we will query the tables and regenerate the expected SP APP name. If that name differs with the current
  * SP app name, tool will update the Service Provider with the expected name.
  */
@@ -60,60 +60,65 @@ public class ApplicationOwnerChangeManagementClient extends MigrationClientBase 
         super(tenantArguments, blackListTenantArguments, tenantRange, tenantManager);
     }
 
-    public void updateApplicationOwner() throws APIMigrationException {
+    public void updateApplicationOwner(boolean overrideSPAppName) throws APIMigrationException {
 
+        if (overrideSPAppName) {
+            log.info("Override SP name is used. If a difference between current SP app name and expected SP name is found, " +
+                    "current SP app name will be updated with the expected SP name.");
+        }
         for (Tenant tenant : getTenantsArray()) {
             List<ApplicationDetailsDTO> appDetailDTOList = apiMgtDAO.retrieveApplicationInfoForTenant(tenant);
             for (ApplicationDetailsDTO appDetailsDTO : appDetailDTOList) {
-                if (appDetailsDTO.getAppSubscriber().equals(appDetailsDTO.getCreatedBy())
-                        && MultitenantUtils
-                        .getTenantAwareUsername(appDetailsDTO.getCreatedBy()).equals(appDetailsDTO.getUserName())) {
-                    try {
-                        UserStoreManager userStoreManager = ServiceHolder.getRealmService()
-                                .getTenantUserRealm(tenant.getId()).getUserStoreManager();
-                        boolean existingUser = userStoreManager.isExistingUser(MultitenantUtils
-                                .getTenantAwareUsername(appDetailsDTO.getAppSubscriber()));
-                        if (existingUser) {
-                            String currentSPAppName = appDetailsDTO.getCurrentSPAppName();
-                            String qualifiedSPName = APIUtil.replaceEmailDomain(appDetailsDTO.getUserName()) + "_" + appDetailsDTO.getAppName() +
-                                    "_" + appDetailsDTO.getKeyType();
-                            if (!qualifiedSPName.equals(currentSPAppName)) {
-                                log.info("Current SP name " + currentSPAppName
-                                        + " does not match with expected SP name of " + qualifiedSPName);
-                                ServiceProvider serviceProvider = applicationManagementService
-                                        .getServiceProvider(currentSPAppName, tenant.getDomain());
-                                if (serviceProvider != null) {
+                try {
+                    UserStoreManager userStoreManager = ServiceHolder.getRealmService()
+                            .getTenantUserRealm(tenant.getId()).getUserStoreManager();
+                    String appOwner = MultitenantUtils.getTenantAwareUsername(
+                            appDetailsDTO.getAppSubscriber());
+                    boolean existingUser = userStoreManager.isExistingUser(appOwner);
+                    if (existingUser) {
+                        String currentSPAppName = appDetailsDTO.getCurrentSPAppName();
+                        String qualifiedSPName =
+                                APIUtil.replaceEmailDomain(appOwner).replace("/", "_")
+                                        + "_" + appDetailsDTO.getAppName() + "_" + appDetailsDTO.getKeyType();
+                        if (!qualifiedSPName.equals(currentSPAppName)) {
+                            log.info("Current SP name " + currentSPAppName
+                                    + " does not match with expected SP name of " + qualifiedSPName);
+                            log.info("Application name from APP table: " + appDetailsDTO.getAppName()
+                                    + ", SP name from IDN table: " + appDetailsDTO.getCurrentSPAppName()
+                                    + ", user from IDN table: " + appDetailsDTO.getUserName()
+                                    + ", user from SUB table: " + appDetailsDTO.getAppSubscriber()
+                                    + " and user from APP table: " + appDetailsDTO.getCreatedBy());
+                            ServiceProvider serviceProvider = applicationManagementService
+                                    .getServiceProvider(currentSPAppName, tenant.getDomain());
+                            if (serviceProvider != null) {
+                                log.info("SP name has to update from " + serviceProvider.getApplicationName()
+                                        + " to " + qualifiedSPName);
+                                if (overrideSPAppName) {
                                     ServiceProvider clonedSP = cloneServiceProvider(serviceProvider);
                                     clonedSP.setApplicationName(qualifiedSPName);
                                     try {
                                         applicationManagementService.updateApplication(clonedSP, tenant.getDomain(),
-                                                appDetailsDTO.getCreatedBy());
-                                        log.info("SP name updated for " + currentSPAppName
+                                                appDetailsDTO.getAppSubscriber());
+                                        log.info("SP name updated for " + serviceProvider.getApplicationName()
                                                 + " with " + qualifiedSPName);
                                     } catch (Exception e) {
-                                        log.error("Error updating the SP " + currentSPAppName + " in tenant " +
-                                                tenant.getDomain(), e);
+                                        log.error("Error updating the SP " + serviceProvider.getApplicationName()
+                                                + " in tenant " + tenant.getDomain(), e);
                                     }
-                                } else {
-                                    log.error("Valid SP not found for " + currentSPAppName + " in tenant " +
-                                            tenant.getDomain());
                                 }
+                            } else {
+                                log.error("A valid SP is not found for " + currentSPAppName + " in tenant " +
+                                        tenant.getDomain());
                             }
-                        } else {
-                            log.error("User " + MultitenantUtils
-                                    .getTenantAwareUsername(appDetailsDTO.getAppSubscriber()) + " from tenant domain "
-                                    + tenant.getDomain() + " does not exists");
                         }
-                    } catch (IdentityApplicationManagementException | UserStoreException e) {
-                        log.error("Error retrieving the SP for App" + appDetailsDTO.getAppName() + " in tenant " +
-                                tenant.getDomain(), e);
+                    } else {
+                        log.error("User " + MultitenantUtils
+                                .getTenantAwareUsername(appDetailsDTO.getAppSubscriber()) + " from tenant domain "
+                                + tenant.getDomain() + " does not exists");
                     }
-                } else {
-                    log.info("User from IDN table: " + appDetailsDTO.getUserName() + " user from SUB table: " +
-                            appDetailsDTO.getAppSubscriber()
-                            + " user from APP table: " + appDetailsDTO.getCreatedBy());
-                    log.error(
-                            "User details does not match. Hence skipped the application " + appDetailsDTO.getAppName());
+                } catch (IdentityApplicationManagementException | UserStoreException e) {
+                    log.error("Error retrieving the SP for App " + appDetailsDTO.getAppName() + " in tenant " +
+                            tenant.getDomain(), e);
                 }
             }
         }
