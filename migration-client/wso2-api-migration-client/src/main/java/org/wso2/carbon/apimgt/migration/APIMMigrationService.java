@@ -19,6 +19,7 @@ package org.wso2.carbon.apimgt.migration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
+import org.wso2.carbon.apimgt.migration.client.ApplicationOwnerChangeManagementClient;
 import org.wso2.carbon.apimgt.migration.client.MigrateFrom200;
 import org.wso2.carbon.apimgt.migration.client.MigrateFrom210;
 import org.wso2.carbon.apimgt.migration.client.MigrateFrom310;
@@ -91,6 +92,8 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean APIPropertyVisibilityUpdate =
                 Boolean.parseBoolean(System.getProperty(Constants.ARG_API_PROPERTY_VISIBILITY_UPDATE));
         boolean isSPAppAssignment = Boolean.parseBoolean(System.getProperty(Constants.ARG_ASSIGN_OAUTH_APPS_TO_OWNERS));
+        boolean overrideSPAppName = Boolean.parseBoolean(System.getProperty(Constants.OVERRIDE_APP_NAME));
+        boolean isEvaluateSPAppName = Boolean.parseBoolean(System.getProperty(Constants.EVALUATE_SP_APP_NAME)) || overrideSPAppName;
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
@@ -99,6 +102,14 @@ public class APIMMigrationService implements ServerStartupObserver {
                 OauthAppAssignmentClient oauthAppAssignMentClient = new OauthAppAssignmentClient(tenants,
                         blackListTenants, tenantRange, tenantManager);
                 oauthAppAssignMentClient.assignOauthAppToOwners();
+            }
+
+            if (isEvaluateSPAppName) {
+                log.info("----------------SP App Name rewrite for owner changed applications started------------------");
+                ApplicationOwnerChangeManagementClient ownerChangeManagementClient =
+                        new ApplicationOwnerChangeManagementClient(tenants, blackListTenants, tenantRange,
+                        tenantManager);
+                ownerChangeManagementClient.updateApplicationOwner(overrideSPAppName);
             }
             //Check SP-Migration enabled
             if (isSPMigration) {

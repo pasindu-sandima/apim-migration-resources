@@ -28,6 +28,7 @@ import org.wso2.carbon.apimgt.migration.dto.APIInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIInfoScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIURLMappingInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.ApplicationDetailsDTO;
 import org.wso2.carbon.apimgt.migration.dto.OauthAppInfoDto;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.ScopeInfoDTO;
@@ -114,6 +115,27 @@ public class APIMgtDAO {
                     "AM_SUBSCRIPTION.API_ID = AM_API.API_ID AND " +
                     "AM_APPLICATION.APPLICATION_ID = AM_SUBSCRIPTION.APPLICATION_ID AND " +
                     "AM_SUBSCRIBER.SUBSCRIBER_ID = AM_APPLICATION.SUBSCRIBER_ID";
+
+    private static String GET_APPLICATION_DETAILS =
+                "SELECT " +
+                        "   APP.NAME," +
+                        "   APP.CREATED_BY," +
+                        "   SUB.USER_ID, " +
+                        "   AKM.CONSUMER_KEY," +
+                        "   AKM.KEY_TYPE," +
+                        "   IDN.APP_NAME," +
+                        "   IDN.USER_DOMAIN, " +
+                        "   IDN.USERNAME " +
+                        " FROM " +
+                        "   AM_APPLICATION_KEY_MAPPING AKM," +
+                        "   AM_APPLICATION APP," +
+                        "   AM_SUBSCRIBER SUB," +
+                        "   IDN_OAUTH_CONSUMER_APPS IDN " +
+                        " WHERE " +
+                        "   AKM.APPLICATION_ID=APP.APPLICATION_ID " +
+                        "   AND APP.SUBSCRIBER_ID = SUB.SUBSCRIBER_ID " +
+                        "   AND IDN.CONSUMER_KEY = AKM.CONSUMER_KEY " +
+                        "   AND SUB.TENANT_ID = ? ";
 
     private APIMgtDAO() {
 
@@ -674,5 +696,32 @@ public class APIMgtDAO {
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_AM_BLOCK_CONDITIONS_VALUE_BY_UUID), e);
         }
+    }
+
+    public List<ApplicationDetailsDTO> retrieveApplicationInfoForTenant(Tenant tenant) throws APIMigrationException {
+
+        List<ApplicationDetailsDTO> applicationDetailsDTOSet = new ArrayList<>();
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APPLICATION_DETAILS)) {
+                preparedStatement.setInt(1, tenant.getId());
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        ApplicationDetailsDTO applicationDetailsDto = new ApplicationDetailsDTO();
+                        applicationDetailsDto.setAppName(resultSet.getString("NAME"));
+                        applicationDetailsDto.setConsumerKey(resultSet.getString("CONSUMER_KEY"));
+                        applicationDetailsDto.setCreatedBy(resultSet.getString("CREATED_BY"));
+                        applicationDetailsDto.setKeyType(resultSet.getString("KEY_TYPE"));
+                        applicationDetailsDto.setAppSubscriber(resultSet.getString("USER_ID"));
+                        applicationDetailsDto.setCurrentSPAppName(resultSet.getString("APP_NAME"));
+                        applicationDetailsDto.setUserDomain(resultSet.getString("USER_DOMAIN"));
+                        applicationDetailsDto.setUserName(resultSet.getString("USERNAME"));
+                        applicationDetailsDTOSet.add(applicationDetailsDto);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(GET_APPLICATION_DETAILS), e);
+        }
+        return applicationDetailsDTOSet;
     }
 }
